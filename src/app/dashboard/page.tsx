@@ -1,23 +1,30 @@
 'use client';
 import React from 'react';
-import { useQuery } from 'react-query';
-
-interface Todo {
-  id: number;
-  todo: string;
-  completed: boolean;
-  userId: number;
-}
-interface TodosRes {
-  todos: Todo[];
-}
+import { useMutation, useQuery, useQueryClient } from 'react-query';
 
 const Dashboard = () => {
-  const { isLoading, error, data } = useQuery(
-    'todos',
-    (): Promise<TodosRes> =>
-      fetch('https://dummyjson.com/todos').then((res) => res.json())
-  );
+  const queryClient = useQueryClient();
+  const { isLoading, error, data } = useQuery({
+    queryKey: ['todos'],
+    queryFn: (): Promise<TodosRes> =>
+      fetch('https://dummyjson.com/todos').then((res) => res.json()),
+  });
+
+  const newPostTodoMutation = useMutation({
+    mutationFn: (): Promise<Todo> =>
+      fetch('https://dummyjson.com/todos/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          todo: 'Use DummyJSON in the project',
+          completed: false,
+          userId: 5,
+        }),
+      }).then((res) => res.json()),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['todos']);
+    },
+  });
 
   console.log(data);
 
@@ -44,6 +51,12 @@ const Dashboard = () => {
       ) : (
         data.todos.map((data) => <li key={data.id}>{data.todo}</li>)
       )}
+      <button
+        disabled={newPostTodoMutation.isLoading}
+        onClick={() => newPostTodoMutation.mutate()}
+      >
+        Add todo
+      </button>
     </div>
   );
 };
